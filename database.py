@@ -5,6 +5,8 @@ url = "https://hjzgryhmegxdfdzsvzhb.supabase.co"
 key = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhqemdyeWhtZWd4ZGZkenN2emhiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzI5MDk2MDAsImV4cCI6MjA0ODQ4NTYwMH0.QtBhZLiO1ZXwIgNHyT7-dL_erjp3nnGl9wA-RgYmuCg"
 supabase = create_client(url, key)
 
+#PyAudio==0.2.14
+
 def init_db():
     # Create messages table if it doesn't exist
     supabase.table('messages').select("*").execute()
