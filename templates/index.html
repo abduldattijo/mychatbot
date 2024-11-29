@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html data-theme="dark">
+<head>
+    <title>SSS/DSS AI Assistant</title>
+    <style>
+        :root[data-theme="light"] {
+            --bg-color: #f5f5f5;
+            --text-color: #000;
+            --chat-bg: rgba(255, 255, 255, 0.9);
+            --message-user-bg: rgba(0, 100, 0, 0.1);
+            --message-bot-bg: rgba(0, 70, 0, 0.1);
+            --input-bg: #fff;
+            --input-border: #008000;
+        }
+        
+        :root[data-theme="dark"] {
+            --bg-color: #1a1a1a;
+            --text-color: #fff;
+            --chat-bg: rgba(32, 32, 32, 0.95);
+            --message-user-bg: rgba(0, 100, 0, 0.3);
+            --message-bot-bg: rgba(0, 70, 0, 0.3);
+            --input-bg: #2d3748;
+            --input-border: #008000;
+        }
+
+        body { 
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background-image: url("../static/sss_logo.png.png");
+            background-size: 40%;
+            background-position: center;
+            background-repeat: no-repeat;
+            background-attachment: fixed;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            min-height: 100vh;
+            margin: 0;
+            transition: all 0.3s;
+        }
+
+        #header {
+            text-align: center;
+            padding: 20px;
+            font-size: 24px;
+            font-weight: bold;
+            color: #008000;
+        }
+
+        #chat-container { 
+            max-width: 800px; 
+            margin: 20px auto; 
+            padding: 20px;
+            background: var(--chat-bg);
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            border: 2px solid #008000;
+        }
+
+        #messages { 
+            height: 500px; 
+            overflow-y: auto; 
+            border: 1px solid var(--input-border); 
+            margin-bottom: 20px; 
+            padding: 15px;
+            border-radius: 5px;
+        }
+
+        #input-container { 
+            display: flex; 
+            gap: 10px; 
+        }
+
+        input[type="text"] { 
+            flex-grow: 1; 
+            padding: 12px;
+            border: 2px solid var(--input-border);
+            border-radius: 5px;
+            background: var(--input-bg);
+            color: var(--text-color);
+        }
+
+        button {
+            padding: 10px 20px;
+            background-color: #008000;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        button:hover {
+            background-color: #006400;
+        }
+
+        .message { 
+            margin: 10px 0;
+            padding: 12px;
+            border-radius: 5px;
+            color: var(--text-color);
+            border-left: 3px solid #008000;
+        }
+
+        .user-message { 
+            background-color: var(--message-user-bg);
+            margin-left: 20%;
+        }
+
+        .bot-message { 
+            background-color: var(--message-bot-bg);
+            margin-right: 20%;
+        }
+
+        .voice-controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        .voice-button {
+            padding: 10px;
+            background-color: #006400;
+        }
+
+        #theme-toggle {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 10px 15px;
+            border-radius: 50%;
+            border: 2px solid #008000;
+            background: var(--chat-bg);
+            color: var(--text-color);
+            font-size: 20px;
+            transition: all 0.3s;
+        }
+
+        #theme-toggle:hover {
+            transform: scale(1.1);
+        }
+
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--bg-color);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #008000;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <button id="theme-toggle">🌓</button>
+    <div id="header">SSS/DSS AI Assistant</div>
+    <div id="chat-container">
+        <div id="messages">
+            {% for msg in history %}
+            <div class="message user-message">You: {{ msg[0] }}</div>
+            <div class="message bot-message">DSS AI Assistant: {{ msg[1] }}</div>
+            {% endfor %}
+        </div>
+        <div class="voice-controls">
+            <button id="recordButton" class="voice-button">🎤 Record</button>
+            <button id="stopButton" class="voice-button" disabled>⏹ Stop</button>
+        </div>
+        <div id="input-container">
+            <input type="text" id="user-input" placeholder="Enter your query...">
+            <button onclick="sendMessage()">Send</button>
+        </div>
+    </div>
+    <script>
+        let mediaRecorder;
+        let audioChunks = [];
+
+        document.getElementById('theme-toggle').addEventListener('click', () => {
+            const html = document.documentElement;
+            const currentTheme = html.getAttribute('data-theme');
+            const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+            html.setAttribute('data-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+        });
+
+        const savedTheme = localStorage.getItem('theme') || 'dark';
+        document.documentElement.setAttribute('data-theme', savedTheme);
+
+        document.getElementById('recordButton').addEventListener('click', async () => {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            mediaRecorder = new MediaRecorder(stream);
+            
+            mediaRecorder.ondataavailable = (event) => {
+                audioChunks.push(event.data);
+            };
+            
+            mediaRecorder.onstop = async () => {
+                const audioBlob = new Blob(audioChunks);
+                const formData = new FormData();
+                formData.append('audio', audioBlob);
+                
+                const response = await fetch('/speech-to-text', { method: 'POST', body: formData });
+                const data = await response.json();
+                
+                if (data.text) {
+                    document.getElementById('user-input').value = data.text;
+                    sendMessage();
+                }
+                
+                audioChunks = [];
+            };
+            
+            mediaRecorder.start();
+            document.getElementById('recordButton').disabled = true;
+            document.getElementById('stopButton').disabled = false;
+        });
+
+        document.getElementById('stopButton').addEventListener('click', () => {
+            mediaRecorder.stop();
+            document.getElementById('recordButton').disabled = false;
+            document.getElementById('stopButton').disabled = true;
+        });
+
+        function sendMessage() {
+            const input = document.getElementById('user-input');
+            const message = input.value.trim();
+            if (message) {
+                fetch('/chat', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({message: message})
+                })
+                .then(response => response.json())
+                .then(data => {
+                    displayMessage('You: ' + message, 'user-message');
+                    displayMessage('DSS AI Assistant: ' + data.response, 'bot-message');
+                    input.value = '';
+                })
+                .catch(error => {
+                    displayMessage('Error: ' + error, 'error-message');
+                });
+            }
+        }
+
+        async function displayMessage(message, className) {
+            const messagesDiv = document.getElementById('messages');
+            const messageElement = document.createElement('div');
+            messageElement.textContent = message;
+            messageElement.className = `message ${className}`;
+            messagesDiv.appendChild(messageElement);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+
+            if (className === 'bot-message') {
+                const response = await fetch('/text-to-speech', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({text: message.replace('DSS AI Assistant: ', '')})
+                });
+                const audioBlob = await response.blob();
+                const audio = new Audio(URL.createObjectURL(audioBlob));
+                audio.play();
+            }
+        }
+
+        document.getElementById('user-input').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
+    </script>
+</body>
+</html>
