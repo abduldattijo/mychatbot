@@ -2,7 +2,7 @@ from flask import Flask, request, jsonify, render_template, send_file
 from dotenv import load_dotenv
 import os
 import openai
-from database import init_db, save_message, get_chat_history
+from database import init_db, save_message, get_chat_history, create_new_chat, get_all_chats, update_chat_title
 import speech_recognition as sr
 import pyttsx3
 import tempfile
@@ -23,13 +23,29 @@ def text_to_speech(text):
 
 @app.route('/')
 def home():
-    history = get_chat_history()
-    return render_template('index.html', history=history)
+    chats = get_all_chats()
+    if not chats:
+        session_id = create_new_chat()
+    else:
+        session_id = chats[0]['id']
+    history = get_chat_history(session_id)
+    return render_template('index.html', history=history, chats=chats, current_chat=session_id)
+
+@app.route('/new_chat', methods=['POST'])
+def new_chat():
+    session_id = create_new_chat()
+    return jsonify({'session_id': session_id})
+
+@app.route('/get_chat/<int:session_id>')
+def get_chat(session_id):
+    history = get_chat_history(session_id)
+    return jsonify({'history': history})
 
 @app.route('/chat', methods=['POST'])
 def chat():
     user_message = request.json.get('message', '')
-    chat_history = get_chat_history()
+    session_id = request.json.get('session_id')
+    chat_history = get_chat_history(session_id)
     
     try:
         messages = [{"role": "system", "content": """You are the SSS/DSS AI Assistant. Your responses should:
@@ -53,7 +69,13 @@ def chat():
             messages=messages
         )
         bot_response = response.choices[0].message.content
-        save_message(user_message, bot_response)
+        save_message(session_id, user_message, bot_response)
+        
+        # Update chat title for new chats
+        if not chat_history:
+            # Use the first few words of user message as chat title
+            title = user_message[:30] + "..." if len(user_message) > 30 else user_message
+            update_chat_title(session_id, title)
         
     except Exception as e:
         bot_response = f"Error: {str(e)}"
@@ -84,5 +106,14 @@ def get_speech():
     except Exception as e:
         return jsonify({'error': str(e)})
 
+
+@app.route('/delete_chat/<int:session_id>', methods=['DELETE'])
+def delete_chat(session_id):
+    try:
+        delete_chat(session_id)
+        return jsonify({'success': True})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500    
+
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0')      
+    app.run(debug=True, host='0.0.0.0')   
