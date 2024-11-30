@@ -51,6 +51,7 @@
             position: fixed;
             left: 0;
             top: 0;
+            z-index: 1000;
         }
 
         #new-chat-btn {
@@ -208,6 +209,11 @@
             background-color: #006400;
         }
 
+        .voice-button[disabled] {
+            background-color: #666;
+            cursor: not-allowed;
+        }
+
         #theme-toggle {
             position: fixed;
             top: 20px;
@@ -219,6 +225,7 @@
             color: var(--text-color);
             font-size: 20px;
             transition: all 0.3s;
+            z-index: 1000;
         }
 
         #theme-toggle:hover {
@@ -276,9 +283,36 @@
         </div>
     </div>
     <script>
-        let mediaRecorder;
-        let audioChunks = [];
         let currentChatId = {{ current_chat }};
+        let recognition = null;
+        let synth = window.speechSynthesis;
+
+        // Initialize Web Speech API
+        if ('webkitSpeechRecognition' in window) {
+            recognition = new webkitSpeechRecognition();
+            recognition.continuous = false;
+            recognition.interimResults = false;
+
+            recognition.onresult = function(event) {
+                const text = event.results[0][0].transcript;
+                document.getElementById('user-input').value = text;
+                sendMessage();
+            };
+
+            recognition.onerror = function(event) {
+                console.error('Speech recognition error:', event.error);
+                document.getElementById('recordButton').disabled = false;
+                document.getElementById('stopButton').disabled = true;
+            };
+
+            recognition.onend = function() {
+                document.getElementById('recordButton').disabled = false;
+                document.getElementById('stopButton').disabled = true;
+            };
+        } else {
+            document.querySelector('.voice-controls').style.display = 'none';
+            console.log('Speech recognition not supported');
+        }
 
         document.getElementById('theme-toggle').addEventListener('click', () => {
             const html = document.documentElement;
@@ -322,6 +356,34 @@
             }
         }
 
+        document.getElementById('recordButton').addEventListener('click', () => {
+            if (recognition) {
+                recognition.start();
+                document.getElementById('recordButton').disabled = true;
+                document.getElementById('stopButton').disabled = false;
+            }
+        });
+
+        document.getElementById('stopButton').addEventListener('click', () => {
+            if (recognition) {
+                recognition.stop();
+                document.getElementById('recordButton').disabled = false;
+                document.getElementById('stopButton').disabled = true;
+            }
+        });
+
+        function speakText(text) {
+            if (synth) {
+                // Stop any ongoing speech
+                synth.cancel();
+
+                const utterance = new SpeechSynthesisUtterance(text);
+                utterance.rate = 1;
+                utterance.pitch = 1;
+                synth.speak(utterance);
+            }
+        }
+
         document.getElementById('new-chat-btn').addEventListener('click', async () => {
             const response = await fetch('/new_chat', { method: 'POST' });
             const data = await response.json();
@@ -345,41 +407,6 @@
             
             chatList.insertBefore(chatItem, chatList.firstChild);
             attachChatItemListener(chatItem);
-        });
-
-        document.getElementById('recordButton').addEventListener('click', async () => {
-            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            mediaRecorder = new MediaRecorder(stream);
-            
-            mediaRecorder.ondataavailable = (event) => {
-                audioChunks.push(event.data);
-            };
-            
-            mediaRecorder.onstop = async () => {
-                const audioBlob = new Blob(audioChunks);
-                const formData = new FormData();
-                formData.append('audio', audioBlob);
-                
-                const response = await fetch('/speech-to-text', { method: 'POST', body: formData });
-                const data = await response.json();
-                
-                if (data.text) {
-                    document.getElementById('user-input').value = data.text;
-                    sendMessage();
-                }
-                
-                audioChunks = [];
-            };
-            
-            mediaRecorder.start();
-            document.getElementById('recordButton').disabled = true;
-            document.getElementById('stopButton').disabled = false;
-        });
-
-        document.getElementById('stopButton').addEventListener('click', () => {
-            mediaRecorder.stop();
-            document.getElementById('recordButton').disabled = false;
-            document.getElementById('stopButton').disabled = true;
         });
 
         function sendMessage() {
@@ -406,7 +433,7 @@
             }
         }
 
-        async function displayMessage(message, className) {
+        function displayMessage(message, className) {
             const messagesDiv = document.getElementById('messages');
             const messageElement = document.createElement('div');
             messageElement.textContent = message;
@@ -415,14 +442,8 @@
             messagesDiv.scrollTop = messagesDiv.scrollHeight;
 
             if (className === 'bot-message') {
-                const response = await fetch('/text-to-speech', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({text: message.replace('DSS AI Assistant: ', '')})
-                });
-                const audioBlob = await response.blob();
-                const audio = new Audio(URL.createObjectURL(audioBlob));
-                audio.play();
+                const textToSpeak = message.replace('DSS AI Assistant: ', '');
+                speakText(textToSpeak);
             }
         }
 
@@ -469,8 +490,8 @@
             }
         });
 
-        // Attach listeners to existing chat items
         document.querySelectorAll('.chat-item').forEach(attachChatItemListener);
     </script>
 </body>
 </html>
+
