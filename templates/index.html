@@ -1,6 +1,8 @@
 <!DOCTYPE html>
 <html data-theme="dark">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SSS/DSS AI Assistant</title>
     <style>
         :root[data-theme="light"] {
@@ -25,19 +27,21 @@
             --sidebar-bg: rgba(26, 26, 26, 0.95);
         }
 
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
         body { 
             font-family: 'Segoe UI', Arial, sans-serif;
-            background-image: url("../static/sss_logo.png.png");
-            background-size: 40%;
-            background-position: center;
-            background-repeat: no-repeat;
-            background-attachment: fixed;
             background-color: var(--bg-color);
             color: var(--text-color);
             min-height: 100vh;
             margin: 0;
             transition: all 0.3s;
             display: flex;
+            overflow-x: hidden;
         }
 
         #sidebar {
@@ -52,6 +56,35 @@
             left: 0;
             top: 0;
             z-index: 1000;
+            transition: transform 0.3s ease-in-out;
+        }
+
+        #toggle-sidebar {
+            display: none;
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            z-index: 1001;
+            padding: 8px;
+            background: #008000;
+            border: none;
+            border-radius: 5px;
+            color: white;
+            cursor: pointer;
+        }
+
+        #logo-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: 20px 0;
+            padding: 20px;
+        }
+
+        #logo-container img {
+            width: 250px;
+            height: auto;
+            max-width: 100%;
         }
 
         #new-chat-btn {
@@ -106,10 +139,6 @@
             opacity: 1;
         }
 
-        .delete-chat:hover {
-            background-color: #bd2130;
-        }
-
         .chat-item:hover {
             background-color: rgba(0, 128, 0, 0.1);
         }
@@ -123,6 +152,9 @@
             flex-grow: 1;
             margin-left: 260px;
             width: calc(100% - 260px);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
         }
 
         #header {
@@ -134,17 +166,23 @@
         }
 
         #chat-container { 
-            max-width: 800px; 
-            margin: 20px auto; 
+            flex-grow: 1;
+            width: 95%;
+            max-width: 1200px;
+            min-height: 80vh;
+            margin: 20px auto;
             padding: 20px;
             background: var(--chat-bg);
             border-radius: 10px;
             box-shadow: 0 2px 10px rgba(0,0,0,0.2);
             border: 2px solid #008000;
+            display: flex;
+            flex-direction: column;
         }
 
         #messages { 
-            height: 500px; 
+            flex-grow: 1;
+            height: calc(100vh - 280px);
             overflow-y: auto; 
             border: 1px solid var(--input-border); 
             margin-bottom: 20px; 
@@ -155,6 +193,7 @@
         #input-container { 
             display: flex; 
             gap: 10px; 
+            padding: 10px 0;
         }
 
         input[type="text"] { 
@@ -164,6 +203,7 @@
             border-radius: 5px;
             background: var(--input-bg);
             color: var(--text-color);
+            font-size: 16px;
         }
 
         button {
@@ -174,6 +214,8 @@
             border-radius: 5px;
             cursor: pointer;
             transition: background-color 0.3s;
+            font-size: 16px;
+            min-height: 44px;
         }
 
         button:hover {
@@ -186,6 +228,7 @@
             border-radius: 5px;
             color: var(--text-color);
             border-left: 3px solid #008000;
+            word-wrap: break-word;
         }
 
         .user-message { 
@@ -209,11 +252,6 @@
             background-color: #006400;
         }
 
-        .voice-button[disabled] {
-            background-color: #666;
-            cursor: not-allowed;
-        }
-
         #theme-toggle {
             position: fixed;
             top: 20px;
@@ -228,8 +266,75 @@
             z-index: 1000;
         }
 
-        #theme-toggle:hover {
-            transform: scale(1.1);
+        @media screen and (max-width: 768px) {
+            #sidebar {
+                transform: translateX(-100%);
+                width: 80%;
+                max-width: 300px;
+            }
+
+            #sidebar.active {
+                transform: translateX(0);
+            }
+
+            #toggle-sidebar {
+                display: block;
+            }
+
+            #main-content {
+                margin-left: 0;
+                width: 100%;
+                padding: 10px;
+            }
+
+            #chat-container {
+                width: 98%;
+                margin: 10px auto;
+            }
+
+            #messages {
+                height: calc(100vh - 250px);
+            }
+
+            .message {
+                margin: 5px 0;
+                padding: 10px;
+            }
+
+            .user-message {
+                margin-left: 10%;
+            }
+
+            .bot-message {
+                margin-right: 10%;
+            }
+
+            #theme-toggle {
+                top: 10px;
+                right: 10px;
+            }
+
+            .voice-controls {
+                flex-wrap: wrap;
+            }
+
+            .voice-button {
+                flex: 1;
+                min-width: 100px;
+            }
+
+            input[type="text"] {
+                font-size: 16px;
+                padding: 8px;
+            }
+
+            button {
+                padding: 8px 15px;
+            }
+
+            #logo-container img {
+                width: 180px;
+            }
         }
 
         ::-webkit-scrollbar {
@@ -249,7 +354,9 @@
 
 
 
+
 <body>
+    <button id="toggle-sidebar">☰</button>
     <div id="sidebar">
         <button id="new-chat-btn">New Chat</button>
         <div id="chat-list">
@@ -266,6 +373,9 @@
         <button id="theme-toggle">🌓</button>
         <div id="header">SSS/DSS AI Assistant</div>
         <div id="chat-container">
+            <div id="logo-container">
+                <img src="../static/sss_logo.png.png" alt="SSS Logo">
+            </div>
             <div id="messages">
                 {% for msg in history %}
                 <div class="message user-message">You: {{ msg[0] }}</div>
@@ -286,6 +396,23 @@
         let currentChatId = {{ current_chat }};
         let recognition = null;
         let synth = window.speechSynthesis;
+
+        // Mobile sidebar toggle
+        document.getElementById('toggle-sidebar').addEventListener('click', () => {
+            document.getElementById('sidebar').classList.toggle('active');
+        });
+
+        // Close sidebar when clicking outside on mobile
+        document.addEventListener('click', (e) => {
+            const sidebar = document.getElementById('sidebar');
+            const toggleBtn = document.getElementById('toggle-sidebar');
+            if (window.innerWidth <= 768 && 
+                !sidebar.contains(e.target) && 
+                e.target !== toggleBtn && 
+                sidebar.classList.contains('active')) {
+                sidebar.classList.remove('active');
+            }
+        });
 
         // Initialize Web Speech API
         if ('webkitSpeechRecognition' in window) {
@@ -374,9 +501,7 @@
 
         function speakText(text) {
             if (synth) {
-                // Stop any ongoing speech
                 synth.cancel();
-
                 const utterance = new SpeechSynthesisUtterance(text);
                 utterance.rate = 1;
                 utterance.pitch = 1;
@@ -407,6 +532,11 @@
             
             chatList.insertBefore(chatItem, chatList.firstChild);
             attachChatItemListener(chatItem);
+
+            // Close sidebar on mobile after creating new chat
+            if (window.innerWidth <= 768) {
+                document.getElementById('sidebar').classList.remove('active');
+            }
         });
 
         function sendMessage() {
@@ -481,6 +611,11 @@
                     messagesDiv.appendChild(userMsg);
                     messagesDiv.appendChild(botMsg);
                 });
+
+                // Close sidebar on mobile after selecting chat
+                if (window.innerWidth <= 768) {
+                    document.getElementById('sidebar').classList.remove('active');
+                }
             });
         }
 
@@ -490,8 +625,8 @@
             }
         });
 
+        // Attach listeners to existing chat items
         document.querySelectorAll('.chat-item').forEach(attachChatItemListener);
     </script>
 </body>
 </html>
-
