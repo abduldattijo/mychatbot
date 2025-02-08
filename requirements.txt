@@ -71,5 +71,5 @@ gevent==23.9.1
 streamlit==1.32.0
 openai==1.11.1
 python-dotenv==1.0.1
-supabase==2.3.1
+#supabase==2.3.1
 python-jose==3.3.0
