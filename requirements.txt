@@ -82,5 +82,6 @@ openai==1.11.1
 python-dotenv==1.0.0
 
 gotrue==2.11.3
-postgrest==0.10.6
 
+
+postgrest>=0.18.0,<0.19.0
