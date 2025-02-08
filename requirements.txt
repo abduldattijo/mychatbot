@@ -27,7 +27,7 @@ Jinja2==3.1.4
 jiter==0.8.0
 MarkupSafe==3.0.2
 multidict==6.1.0
-openai==1.55.3
+#openai==1.55.3
 packaging==24.2
 postgrest==0.18.0
 propcache==0.2.0
@@ -69,7 +69,7 @@ gevent==23.9.1
 
 
 streamlit==1.32.0
-openai==1.12.0
+openai==1.11.1
 python-dotenv==1.0.1
 supabase==2.3.1
 python-jose==3.3.0
